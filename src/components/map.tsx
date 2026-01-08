@@ -15,8 +15,6 @@ interface Vehicle {
   isAlerted: boolean
 }
 
-const OPENROUTE_API_KEY = '5b3ce3597851110001cf62484720627ea924407099674626b693b31c'
-
 export default function Map({ isSimulating, onError }: MapProps) {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<maplibregl.Map | null>(null)
@@ -32,7 +30,7 @@ export default function Map({ isSimulating, onError }: MapProps) {
     map.current = new maplibregl.Map({
       container: mapContainer.current,
       style: 'https://api.maptiler.com/maps/basic-v2/style.json?key=BgoYrCzPegevrMw1X6ME',
-      center: [72.6369, 23.0225], // Default to Ahmedabad
+      center: [78.0322, 30.3165], // Dehradun
       zoom: 13,
     })
 
@@ -106,7 +104,7 @@ export default function Map({ isSimulating, onError }: MapProps) {
 
   const fetchRoute = async (start: [number, number], end: [number, number]): Promise<[number, number][]> => {
     const response = await fetch(
-      `https://api.openrouteservice.org/v2/directions/driving-car?api_key=${OPENROUTE_API_KEY}&start=${start[0]},${start[1]}&end=${end[0]},${end[1]}`,
+      `/api/directions?startLng=${start[0]}&startLat=${start[1]}&endLng=${end[0]}&endLat=${end[1]}`,
       {
         headers: {
           'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
@@ -287,13 +285,11 @@ const getVehiclesWithin10KmAhead = async (ambulancePosition: [number, number]): 
 
   try {
     const response = await fetch(
-      `https://api.openrouteservice.org/v2/matrix/driving-car`,
+      `/api/matrix-distances`,
       {
         method: 'POST',
         headers: {
-          'Accept': 'application/json, application/geo+json, application/gpx+xml, img/png; charset=utf-8',
           'Content-Type': 'application/json',
-          'Authorization': OPENROUTE_API_KEY
         },
         body: JSON.stringify({
           locations: [[ambLng, ambLat], ...vehiclePositions],
