@@ -23,15 +23,27 @@ export default function Map({ isSimulating, onError }: MapProps) {
   const ambulanceRef = useRef<maplibregl.Marker | null>(null)
   const animationRef = useRef<number | null>(null)
   const [toast, setToast] = useState<{ title: string; description: string } | null>(null)
+  const lastDistanceCheckRef = useRef<number>(0)
+  const DISTANCE_CHECK_INTERVAL = 2000 // Only check distances every 2 seconds
 
   useEffect(() => {
     if (!mapContainer.current) return
 
+    const mapStyle = 'https://api.maptiler.com/maps/basic-v2/style.json?key=BgoYrCzPegevrMw1X6ME'
+    const fallbackStyle = 'https://demotiles.maplibre.org/style.json'
+
     map.current = new maplibregl.Map({
       container: mapContainer.current,
-      style: 'https://api.maptiler.com/maps/basic-v2/style.json?key=BgoYrCzPegevrMw1X6ME',
+      style: mapStyle,
       center: [78.0322, 30.3165], // Dehradun
       zoom: 13,
+    })
+
+    map.current.on('error', (e) => {
+      console.warn('Map style error, falling back to default:', e)
+      if (map.current && map.current.getStyle().name !== 'fallback') {
+        map.current.setStyle(fallbackStyle)
+      }
     })
 
     map.current.on('load', () => {
@@ -252,6 +264,13 @@ export default function Map({ isSimulating, onError }: MapProps) {
   const updateVehicleAlerts = async (ambulancePosition: [number, number]) => {
     if (!ambulanceRef.current) return
 
+    // Debounce: only check distances every 2 seconds to prevent API spam
+    const now = Date.now()
+    if (now - lastDistanceCheckRef.current < DISTANCE_CHECK_INTERVAL) {
+      return
+    }
+    lastDistanceCheckRef.current = now
+
     const [ambLat, ambLng] = ambulancePosition
     try {
       const alertedVehicles = await getVehiclesWithin10KmAhead(ambulancePosition)
@@ -306,7 +325,6 @@ const getVehiclesWithin10KmAhead = async (ambulancePosition: [number, number]): 
     }
 
     const data = await response.json()
-    console.log('OpenRouteService API Response:', data) // Add logging to check the response
 
     if (!data.distances || !Array.isArray(data.distances[0])) {
       throw new Error('Invalid response format or missing distances')

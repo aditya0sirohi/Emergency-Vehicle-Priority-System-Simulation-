@@ -6,6 +6,14 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
 
+    // Validate request body
+    if (!body.locations || !Array.isArray(body.locations)) {
+      return NextResponse.json(
+        { error: 'Invalid locations array' },
+        { status: 400 }
+      );
+    }
+
     const response = await fetch(
       'https://api.openrouteservice.org/v2/matrix/driving-car',
       {
@@ -20,7 +28,12 @@ export async function POST(request: NextRequest) {
     );
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      const errorData = await response.json().catch(() => ({}));
+      console.error('OpenRouteService error:', response.status, errorData);
+      return NextResponse.json(
+        { error: `OpenRouteService returned ${response.status}`, details: errorData },
+        { status: response.status }
+      );
     }
 
     const data = await response.json();
@@ -28,7 +41,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Error in matrix-distances API:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch matrix distances' },
+      { error: 'Failed to fetch matrix distances', details: String(error) },
       { status: 500 }
     );
   }
